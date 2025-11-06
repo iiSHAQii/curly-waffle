@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Emotion Recognition</title>
+    <style>
+        body { font-family: sans-serif; display: grid; place-items: center; min-height: 90vh; background: #f4f4f4; }
+        video { border: 2px solid #333; }
+        #result { font-size: 2em; font-weight: bold; margin-top: 20px; }
+        button { font-size: 1.2em; padding: 10px 20px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <h2>Facial Emotion Recognition</h2>
+    <video id="video" width="640" height="480" autoplay muted></video>
+    <button id="predict-btn">Predict Emotion</button>
+    <h1 id="result">...</h1>
+
+    <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+        const resultElement = document.getElementById('result');
+        const predictBtn = document.getElementById('predict-btn');
+
+        // IMPORTANT: Change this URL to your live Render API URL!
+        const apiUrl = 'https://curly-waffle-29ov.onrender.com/predict'; 
+
+        // 1. Get webcam access
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.error("Error accessing webcam: ", err);
+                resultElement.textContent = "Error: Could not access webcam.";
+            });
+
+        // 2. Set up the predict button
+        predictBtn.addEventListener('click', predictEmotion);
+
+        async function predictEmotion() {
+            try {
+                resultElement.textContent = "Thinking...";
+
+                // Draw the current video frame onto the hidden canvas
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // Get the image data from the canvas
+                const imageDataUrl = canvas.toDataURL('image/jpeg');
+
+                // This is the API call from your instructions!
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: imageDataUrl })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+
+                // Display the result
+                resultElement.textContent = `${result.emotion} (${(result.confidence * 100).toFixed(1)}%)`;
+                console.log(result.probabilities); // You can see all scores in the console (F12)
+
+            } catch (error) {
+                console.error("Prediction failed:", error);
+                resultElement.textContent = "Error predicting.";
+            }
+        }
+    </script>
+</body>
+</html>
